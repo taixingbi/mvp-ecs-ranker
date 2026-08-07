@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODEL_ID="${MODEL_ID:-BAAI/bge-reranker-v2-m3}"
 MODEL_PATH="${MODEL_PATH:-/models/bge-reranker-v2-m3}"
-MODEL_S3_URI="${MODEL_S3_URI:-s3://bedrock-models-646821141010/rerankers/bge-reranker-v2-m3/}"
+MODEL_S3_URI="${MODEL_S3_URI:-s3://reranker-models-646821141010/bge-reranker-v2-m3/}"
 ADAPTER_PORT="${ADAPTER_PORT:-8080}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 

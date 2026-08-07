@@ -11,13 +11,13 @@ Parameters:
     Description: Full ECR image URI including tag
   ModelS3Uri:
     Type: String
-    Default: s3://bedrock-models-646821141010/rerankers/bge-reranker-v2-m3/
+    Default: s3://reranker-models-646821141010/bge-reranker-v2-m3/
   ModelBucketName:
     Type: String
-    Default: bedrock-models-646821141010
+    Default: reranker-models-646821141010
   ModelBucketPrefix:
     Type: String
-    Default: rerankers/*
+    Default: '*'
   InstanceType:
     Type: String
     Default: g5.xlarge
@@ -197,8 +197,8 @@ Resources:
                 Condition:
                   StringLike:
                     s3:prefix:
-                      - rerankers
-                      - rerankers/*
+                      - '*'
+                      - '*/*'
               - Effect: Allow
                 Action:
                   - s3:GetObject

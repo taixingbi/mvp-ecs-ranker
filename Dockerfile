@@ -20,7 +20,7 @@ COPY app /workspace/app
 COPY scripts/entrypoint.sh /workspace/scripts/entrypoint.sh
 RUN chmod +x /workspace/scripts/entrypoint.sh
 
-ENV MODEL_S3_URI=s3://bedrock-models-646821141010/rerankers/bge-reranker-v2-m3/ \
+ENV MODEL_S3_URI=s3://reranker-models-646821141010/bge-reranker-v2-m3/ \
     MODEL_PATH=/models/bge-reranker-v2-m3 \
     MODEL_ID=BAAI/bge-reranker-v2-m3 \
     ADAPTER_PORT=8080 \

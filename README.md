@@ -19,7 +19,7 @@ Swap models via `MODEL_ID`, `MODEL_PATH`, and `MODEL_S3_URI` (weights must be sy
 | Piece | Value |
 | --- | --- |
 | Default model | `BAAI/bge-reranker-v2-m3` |
-| Model weights | `s3://bedrock-models-646821141010/rerankers/bge-reranker-v2-m3/` |
+| Model weights | `s3://reranker-models-646821141010/bge-reranker-v2-m3/` |
 | Compute | 1 × `g5.xlarge` (1 × A10G) |
 | Serving | sentence-transformers CrossEncoder + FastAPI |
 | Region | `us-east-1` |
