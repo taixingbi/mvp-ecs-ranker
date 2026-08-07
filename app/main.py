@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from sentence_transformers import CrossEncoder
+from transformers import AutoModel
 
 API_KEY = os.environ.get("API_KEY", "")
 DEFAULT_MODEL_ID = os.environ.get("MODEL_ID", "BAAI/bge-reranker-v2-m3")
@@ -18,6 +19,9 @@ _DEFAULT_CATALOG: dict[str, str] = {
     "BAAI/bge-reranker-v2-m3": "bge-reranker-v2-m3",
     "jinaai/jina-reranker-v3.5": "jina-reranker-v3.5",
 }
+
+# Listwise models expose model.rerank(query, documents); not CrossEncoder.
+_LISTWISE_MODELS = frozenset({"jinaai/jina-reranker-v3.5"})
 
 
 def _load_catalog() -> dict[str, str]:
@@ -42,7 +46,7 @@ CORS_HEADERS = {
 }
 
 app = FastAPI(title="mvp-ecs-reranker")
-_models: dict[str, CrossEncoder] = {}
+_models: dict[str, Any] = {}
 _ready = False
 
 
@@ -85,10 +89,23 @@ def _resolve_model_id(request_model: Any) -> str:
     return model_id
 
 
-def _get_model(model_id: str) -> CrossEncoder:
+def _is_listwise(model_id: str) -> bool:
+    return model_id in _LISTWISE_MODELS
+
+
+def _get_model(model_id: str) -> Any:
     if model_id not in _models:
         path = MODEL_CATALOG[model_id]
-        _models[model_id] = CrossEncoder(path, trust_remote_code=True)
+        if _is_listwise(model_id):
+            model = AutoModel.from_pretrained(
+                path,
+                trust_remote_code=True,
+                dtype="auto",
+            )
+            model.eval()
+            _models[model_id] = model
+        else:
+            _models[model_id] = CrossEncoder(path, trust_remote_code=True)
     return _models[model_id]
 
 
@@ -123,12 +140,9 @@ def _parse_rerank(payload: dict[str, Any]) -> tuple[str, list[str], int | None]:
     return query, documents, min(top_n, len(documents))
 
 
-def _rerank(
-    model_id: str, query: str, documents: list[str], top_n: int | None
+def _rank_from_scores(
+    scores: list[float], top_n: int | None
 ) -> list[dict[str, Any]]:
-    model = _get_model(model_id)
-    pairs = [(query, doc) for doc in documents]
-    scores = model.predict(pairs)
     ranked = sorted(
         (
             {"index": i, "relevance_score": float(score)}
@@ -140,6 +154,30 @@ def _rerank(
     if top_n is not None:
         ranked = ranked[:top_n]
     return ranked
+
+
+def _rerank(
+    model_id: str, query: str, documents: list[str], top_n: int | None
+) -> list[dict[str, Any]]:
+    model = _get_model(model_id)
+
+    if _is_listwise(model_id):
+        kwargs: dict[str, Any] = {}
+        if top_n is not None:
+            kwargs["top_n"] = top_n
+        raw = model.rerank(query, documents, **kwargs)
+        results: list[dict[str, Any]] = []
+        for item in raw:
+            entry: dict[str, Any] = {
+                "index": int(item["index"]),
+                "relevance_score": float(item["relevance_score"]),
+            }
+            results.append(entry)
+        return results
+
+    pairs = [(query, doc) for doc in documents]
+    scores = model.predict(pairs)
+    return _rank_from_scores(list(scores), top_n)
 
 
 @app.on_event("startup")
