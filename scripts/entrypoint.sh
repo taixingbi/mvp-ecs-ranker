@@ -13,7 +13,6 @@ MODEL_DIRS=(
   jina-reranker-v2-base-multilingual
   mxbai-rerank-large-v1
   bge-reranker-v2-m3
-  jina-reranker-v3.5
 )
 
 # Skip HF export duplicates / caches that blow disk on g5.xlarge root volume.

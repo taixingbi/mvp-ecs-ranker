@@ -10,7 +10,6 @@ Self-hosted **cross-encoder rerankers** on ECS GPU (`g5.xlarge` / A10G) for depl
 | **~100–300M** | `jinaai/jina-reranker-v2-base-multilingual` | different family / architecture |
 | **~335M** | `mixedbread-ai/mxbai-rerank-large-v1` | strong independent cross-encoder family |
 | **568M** | `BAAI/bge-reranker-v2-m3` | strong established BGE baseline (**default**) |
-| **~600M, optional** | `jinaai/jina-reranker-v3.5` | newer listwise reranking approach |
 
 Swap request `"model"` to select among synced weights (one ECS task hosts all).
 

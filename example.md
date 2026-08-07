@@ -71,16 +71,3 @@ curl -sS -X POST "${SERVICE_URL}/v1/rerank" \
     \"return_documents\": true
   }" | jq '{model, results, error, detail}'
 echo
-
-# jinaai/jina-reranker-v3.5 (optional)
-curl -sS -X POST "${SERVICE_URL}/v1/rerank" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${API_KEY}" \
-  -d "{
-    \"model\": \"jinaai/jina-reranker-v3.5\",
-    \"query\": \"${QUERY}\",
-    \"documents\": ${DOCS},
-    \"top_n\": 2,
-    \"return_documents\": true
-  }" | jq '{model, results, error, detail}'
-echo

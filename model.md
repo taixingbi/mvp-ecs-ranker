@@ -1,9 +1,13 @@
+# Reranker models
 
+| Size (weights) | Hugging Face ID | S3 prefix | Role | Serving |
+| ---: | --- | --- | --- | --- |
+| **~90MB** | `cross-encoder/ms-marco-MiniLM-L6-v2` | `ms-marco-MiniLM-L6-v2` | classic lightweight baseline | CrossEncoder / GPU |
+| **~278M** | `jinaai/jina-reranker-v2-base-multilingual` | `jina-reranker-v2-base-multilingual` | different family / architecture | CrossEncoder / GPU |
+| **~335M** | `mixedbread-ai/mxbai-rerank-large-v1` | `mxbai-rerank-large-v1` | strong independent cross-encoder | CrossEncoder / GPU |
+| **~568M** | `BAAI/bge-reranker-v2-m3` | `bge-reranker-v2-m3` | strong BGE baseline (**default**) | CrossEncoder / GPU |
 
-|                Size | Model                                  | Why include it                          |
-| ------------------: | -------------------------------------- | --------------------------------------- |
-|             **22M** | `cross-encoder/ms-marco-MiniLM-L-6-v2` | classic lightweight baseline            |
-|       **~100–300M** | `jina-reranker-v2-base-multilingual`   | different family / architecture         |
-|           **~335M** | `mxbai-rerank-large-v1`                | strong independent cross-encoder family |
-|            **568M** | `BAAI/bge-reranker-v2-m3`              | strong established BGE baseline         |
-| **~600M, optional** | `jina-reranker-v3.5`                   | newer listwise reranking approach       |
+## Storage
+
+- Bucket: `s3://reranker-models-646821141010/`
+- Sync ships `model*.safetensors` plus tokenizer/config only (no ONNX / OpenVINO / cache)
