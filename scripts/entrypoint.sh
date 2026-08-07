@@ -16,6 +16,22 @@ MODEL_DIRS=(
   jina-reranker-v3.5
 )
 
+# Skip HF export duplicates / caches that blow disk on g5.xlarge root volume.
+S3_SYNC_EXCLUDES=(
+  --exclude ".cache/*"
+  --exclude "onnx/*"
+  --exclude "openvino/*"
+  --exclude "assets/*"
+  --exclude "*.onnx"
+  --exclude "flax_model.*"
+  --exclude "rust_model.*"
+  --exclude "tf_model.*"
+  --exclude "model.msgpack"
+  --exclude "pytorch_model.bin"
+  --exclude "pytorch_model.bin.index.json"
+  --exclude "*.h5"
+)
+
 export AWS_DEFAULT_REGION="${AWS_REGION}"
 
 mkdir -p "${MODELS_ROOT}"
@@ -24,9 +40,14 @@ for dir in "${MODEL_DIRS[@]}"; do
   dst="${MODELS_ROOT%/}/${dir}"
   echo "Syncing ${src} -> ${dst}"
   mkdir -p "${dst}"
-  aws s3 sync "${src}" "${dst}" --only-show-errors
+  aws s3 sync "${src}" "${dst}" --only-show-errors "${S3_SYNC_EXCLUDES[@]}"
   if [[ ! -f "${dst}/config.json" ]]; then
     echo "ERROR: config.json missing after S3 sync for ${dir}" >&2
+    exit 1
+  fi
+  if ! compgen -G "${dst}/model*.safetensors" >/dev/null \
+    && ! compgen -G "${dst}/pytorch_model*.bin" >/dev/null; then
+    echo "ERROR: no model weights (*.safetensors) after S3 sync for ${dir}" >&2
     exit 1
   fi
 done

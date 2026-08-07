@@ -79,6 +79,7 @@ jobs:
               "ApiKey=${API_KEY}" \
               "ImageUri=${IMAGE_URI}" \
               "ModelId=BAAI/bge-reranker-v2-m3" \
+              "RootVolumeSize=200" \
               "DesiredCount=1" \
             --no-fail-on-empty-changeset
 
