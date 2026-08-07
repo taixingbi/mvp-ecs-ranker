@@ -3,7 +3,7 @@
 # Does not print secret values.
 set -euo pipefail
 
-REPO="${REPO:-taixingbi/mvp-ecs-reranker}"
+REPO="${REPO:-taixingbi/mvp-ecs-ranker}"
 
 if [[ -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   AWS_ACCESS_KEY_ID="$(aws configure get aws_access_key_id)"
@@ -15,18 +15,18 @@ if [[ -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
   exit 1
 fi
 
-if [[ -z "${INFERENCE_API_KEY:-}" ]]; then
-  INFERENCE_API_KEY="$(openssl rand -hex 16)"
-  echo "Generated INFERENCE_API_KEY (save it; value is not printed again by this script)."
+if [[ -z "${API_KEY:-}" ]]; then
+  API_KEY="$(openssl rand -hex 16)"
+  echo "Generated API_KEY (save it; value is not printed again by this script)."
   # Write once to a local file the user can read, not stdout of CI logs
   umask 077
-  printf '%s\n' "${INFERENCE_API_KEY}" > .inference_api_key
+  printf '%s\n' "${API_KEY}" > .inference_api_key
   echo "Wrote ./.inference_api_key (gitignored)."
 fi
 
 gh secret set AWS_ACCESS_KEY_ID --repo "${REPO}" --body "${AWS_ACCESS_KEY_ID}"
 gh secret set AWS_SECRET_ACCESS_KEY --repo "${REPO}" --body "${AWS_SECRET_ACCESS_KEY}"
-gh secret set INFERENCE_API_KEY --repo "${REPO}" --body "${INFERENCE_API_KEY}"
+gh secret set API_KEY --repo "${REPO}" --body "${API_KEY}"
 
 echo "Set secrets on ${REPO}:"
 gh secret list --repo "${REPO}"

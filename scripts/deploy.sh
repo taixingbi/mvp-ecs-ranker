@@ -9,14 +9,14 @@ AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account 
 ECR_REPO="${ECR_REPO:-mvp-ecs-reranker}"
 STACK_NAME="${STACK_NAME:-ecs-reranker-mvp}"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo latest)}"
-API_KEY="${API_KEY:-${INFERENCE_API_KEY:-}}"
+API_KEY="${API_KEY:-}"
 MODEL_S3_URI="${MODEL_S3_URI:-s3://reranker-models-646821141010/bge-reranker-v2-m3/}"
 MODEL_ID="${MODEL_ID:-BAAI/bge-reranker-v2-m3}"
 MODEL_PATH="${MODEL_PATH:-/models/bge-reranker-v2-m3}"
 DESIRED_COUNT="${DESIRED_COUNT:-1}"
 
 if [[ -z "${API_KEY}" ]]; then
-  echo "ERROR: set API_KEY or INFERENCE_API_KEY" >&2
+  echo "ERROR: set API_KEY" >&2
   exit 1
 fi
 

@@ -33,7 +33,7 @@ Repository secrets (Settings → Secrets and variables → Actions):
 | --- | --- |
 | `AWS_ACCESS_KEY_ID` | Deploy credentials |
 | `AWS_SECRET_ACCESS_KEY` | Deploy credentials |
-| `INFERENCE_API_KEY` | Value required in `Authorization: Bearer` or `x-api-key` |
+| `API_KEY` | Value required in `Authorization: Bearer` or `x-api-key` |
 
 Optional variable: `AWS_REGION` (default `us-east-1`).
 
@@ -42,9 +42,9 @@ Set from a machine that already has AWS + `gh` auth:
 ```bash
 ./scripts/set-github-secrets.sh
 # or manually:
-gh secret set AWS_ACCESS_KEY_ID --body "$AWS_ACCESS_KEY_ID" --repo taixingbi/mvp-ecs-reranker
-gh secret set AWS_SECRET_ACCESS_KEY --body "$AWS_SECRET_ACCESS_KEY" --repo taixingbi/mvp-ecs-reranker
-gh secret set INFERENCE_API_KEY --body "$INFERENCE_API_KEY" --repo taixingbi/mvp-ecs-reranker
+gh secret set AWS_ACCESS_KEY_ID --body "$AWS_ACCESS_KEY_ID" --repo taixingbi/mvp-ecs-ranker
+gh secret set AWS_SECRET_ACCESS_KEY --body "$AWS_SECRET_ACCESS_KEY" --repo taixingbi/mvp-ecs-ranker
+gh secret set API_KEY --body "$API_KEY" --repo taixingbi/mvp-ecs-ranker
 ```
 
 ## Deploy
@@ -64,11 +64,11 @@ export SERVICE_URL=$(aws cloudformation describe-stacks \
   --stack-name ecs-reranker-mvp \
   --query "Stacks[0].Outputs[?OutputKey=='ServiceUrl'].OutputValue" \
   --output text)
-export INFERENCE_API_KEY='your-shared-secret'
+export API_KEY='your-shared-secret'
 
 curl -sS -X POST "${SERVICE_URL}/v1/rerank" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${INFERENCE_API_KEY}" \
+  -H "Authorization: Bearer ${API_KEY}" \
   -d '{
     "model": "BAAI/bge-reranker-v2-m3",
     "query": "what is a panda?",
@@ -102,8 +102,8 @@ Cold start includes S3 sync + model load; allow a few minutes before `/health` r
 
 Headers (either works):
 
-- `Authorization: Bearer <INFERENCE_API_KEY>`
-- `x-api-key: <INFERENCE_API_KEY>`
+- `Authorization: Bearer <API_KEY>`
+- `x-api-key: <API_KEY>`
 
 Success shape:
 
