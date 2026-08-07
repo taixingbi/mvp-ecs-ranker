@@ -2,6 +2,7 @@ import json
 import os
 from typing import Any
 
+import torch
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from sentence_transformers import CrossEncoder
@@ -93,19 +94,27 @@ def _is_listwise(model_id: str) -> bool:
     return model_id in _LISTWISE_MODELS
 
 
+def _device() -> str:
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def _get_model(model_id: str) -> Any:
     if model_id not in _models:
         path = MODEL_CATALOG[model_id]
+        device = _device()
         if _is_listwise(model_id):
             model = AutoModel.from_pretrained(
                 path,
                 trust_remote_code=True,
                 dtype="auto",
             )
+            model.to(device)
             model.eval()
             _models[model_id] = model
         else:
-            _models[model_id] = CrossEncoder(path, trust_remote_code=True)
+            _models[model_id] = CrossEncoder(
+                path, trust_remote_code=True, device=device
+            )
     return _models[model_id]
 
 
@@ -201,6 +210,8 @@ async def health() -> JSONResponse:
         {
             "status": "ok",
             "default_model": DEFAULT_MODEL_ID,
+            "device": _device(),
+            "cuda_available": torch.cuda.is_available(),
             "available_models": _available_models(),
             "loaded_models": sorted(_models.keys()),
         },
