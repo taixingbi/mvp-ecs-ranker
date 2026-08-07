@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: deploy-ecs-reranker-mvp
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
