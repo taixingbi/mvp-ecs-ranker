@@ -6,20 +6,20 @@ Self-hosted **cross-encoder rerankers** on ECS GPU (`g5.xlarge` / A10G) for depl
 
 | Size | Model | Role |
 | ---: | --- | --- |
-| **22M** | `cross-encoder/ms-marco-MiniLM-L-6-v2` | classic lightweight baseline |
+| **22M** | `cross-encoder/ms-marco-MiniLM-L6-v2` | classic lightweight baseline |
 | **~100–300M** | `jinaai/jina-reranker-v2-base-multilingual` | different family / architecture |
 | **~335M** | `mixedbread-ai/mxbai-rerank-large-v1` | strong independent cross-encoder family |
 | **568M** | `BAAI/bge-reranker-v2-m3` | strong established BGE baseline (**default**) |
-| **~600M, optional** | `jinaai/jina-reranker-v3` | newer listwise reranking approach |
+| **~600M, optional** | `jinaai/jina-reranker-v3.5` | newer listwise reranking approach |
 
-Swap models via `MODEL_ID`, `MODEL_PATH`, and `MODEL_S3_URI` (weights must be synced to S3 first).
+Swap request `"model"` to select among synced weights (one ECS task hosts all).
 
 ## Stack
 
 | Piece | Value |
 | --- | --- |
 | Default model | `BAAI/bge-reranker-v2-m3` |
-| Model weights | `s3://reranker-models-646821141010/bge-reranker-v2-m3/` |
+| Model weights | `s3://reranker-models-646821141010/` (all prefixes synced at boot) |
 | Compute | 1 × `g5.xlarge` (1 × A10G) |
 | Serving | sentence-transformers CrossEncoder + FastAPI |
 | Region | `us-east-1` |
@@ -123,8 +123,8 @@ Success shape:
 A single on-demand `g5.xlarge` is roughly $1+/hour. Tear down when idle:
 
 ```bash
-./scripts/rm-ecs.sh
+./scripts/destroy.sh
 # keep ECR images:
-DELETE_ECR=0 ./scripts/rm-ecs.sh
+DELETE_ECR=0 ./scripts/destroy.sh
 ```
 # mvp-ecs-ranker

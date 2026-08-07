@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any
 
@@ -6,8 +7,33 @@ from fastapi.responses import JSONResponse
 from sentence_transformers import CrossEncoder
 
 API_KEY = os.environ.get("API_KEY", "")
-MODEL_ID = os.environ.get("MODEL_ID", "BAAI/bge-reranker-v2-m3")
-MODEL_PATH = os.environ.get("MODEL_PATH", f"/models/{MODEL_ID.split('/')[-1]}")
+DEFAULT_MODEL_ID = os.environ.get("MODEL_ID", "BAAI/bge-reranker-v2-m3")
+MODELS_ROOT = os.environ.get("MODELS_ROOT", "/models")
+
+# HF model id -> local directory name under MODELS_ROOT
+_DEFAULT_CATALOG: dict[str, str] = {
+    "cross-encoder/ms-marco-MiniLM-L6-v2": "ms-marco-MiniLM-L6-v2",
+    "jinaai/jina-reranker-v2-base-multilingual": "jina-reranker-v2-base-multilingual",
+    "mixedbread-ai/mxbai-rerank-large-v1": "mxbai-rerank-large-v1",
+    "BAAI/bge-reranker-v2-m3": "bge-reranker-v2-m3",
+    "jinaai/jina-reranker-v3.5": "jina-reranker-v3.5",
+}
+
+
+def _load_catalog() -> dict[str, str]:
+    raw = os.environ.get("MODEL_CATALOG_JSON", "").strip()
+    if raw:
+        data = json.loads(raw)
+        if not isinstance(data, dict) or not data:
+            raise ValueError("MODEL_CATALOG_JSON must be a non-empty object")
+        return {str(k): str(v) for k, v in data.items()}
+    return {
+        model_id: os.path.join(MODELS_ROOT, dirname)
+        for model_id, dirname in _DEFAULT_CATALOG.items()
+    }
+
+
+MODEL_CATALOG = _load_catalog()
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -16,7 +42,8 @@ CORS_HEADERS = {
 }
 
 app = FastAPI(title="mvp-ecs-reranker")
-_model: CrossEncoder | None = None
+_models: dict[str, CrossEncoder] = {}
+_ready = False
 
 
 def _json(status: int, body: dict[str, Any]) -> JSONResponse:
@@ -34,11 +61,35 @@ def _authorized(request: Request) -> bool:
     return False
 
 
-def _get_model() -> CrossEncoder:
-    global _model
-    if _model is None:
-        _model = CrossEncoder(MODEL_PATH)
-    return _model
+def _available_models() -> list[str]:
+    available: list[str] = []
+    for model_id, path in MODEL_CATALOG.items():
+        if os.path.isfile(os.path.join(path, "config.json")):
+            available.append(model_id)
+    return available
+
+
+def _resolve_model_id(request_model: Any) -> str:
+    if isinstance(request_model, str) and request_model.strip():
+        model_id = request_model.strip()
+    else:
+        model_id = DEFAULT_MODEL_ID
+
+    if model_id not in MODEL_CATALOG:
+        raise ValueError(
+            f"unknown model {model_id!r}; available: {_available_models()}"
+        )
+    path = MODEL_CATALOG[model_id]
+    if not os.path.isfile(os.path.join(path, "config.json")):
+        raise ValueError(f"model weights missing for {model_id!r} at {path}")
+    return model_id
+
+
+def _get_model(model_id: str) -> CrossEncoder:
+    if model_id not in _models:
+        path = MODEL_CATALOG[model_id]
+        _models[model_id] = CrossEncoder(path, trust_remote_code=True)
+    return _models[model_id]
 
 
 def _normalize_documents(payload: dict[str, Any]) -> list[str]:
@@ -72,8 +123,10 @@ def _parse_rerank(payload: dict[str, Any]) -> tuple[str, list[str], int | None]:
     return query, documents, min(top_n, len(documents))
 
 
-def _rerank(query: str, documents: list[str], top_n: int | None) -> list[dict[str, Any]]:
-    model = _get_model()
+def _rerank(
+    model_id: str, query: str, documents: list[str], top_n: int | None
+) -> list[dict[str, Any]]:
+    model = _get_model(model_id)
     pairs = [(query, doc) for doc in documents]
     scores = model.predict(pairs)
     ranked = sorted(
@@ -91,19 +144,49 @@ def _rerank(query: str, documents: list[str], top_n: int | None) -> list[dict[st
 
 @app.on_event("startup")
 async def startup() -> None:
-    _get_model()
+    global _ready
+    available = _available_models()
+    if not available:
+        raise RuntimeError("no model weights found under MODEL_CATALOG paths")
+    # Warm the default model so /health becomes ok after cold start.
+    warm_id = DEFAULT_MODEL_ID if DEFAULT_MODEL_ID in available else available[0]
+    _get_model(warm_id)
+    _ready = True
 
 
 @app.get("/health")
 async def health() -> JSONResponse:
-    if _model is None:
+    if not _ready:
         return _json(503, {"status": "starting"})
-    return _json(200, {"status": "ok", "model": MODEL_ID})
+    return _json(
+        200,
+        {
+            "status": "ok",
+            "default_model": DEFAULT_MODEL_ID,
+            "available_models": _available_models(),
+            "loaded_models": sorted(_models.keys()),
+        },
+    )
+
+
+@app.get("/v1/models")
+async def list_models() -> JSONResponse:
+    return _json(
+        200,
+        {
+            "object": "list",
+            "data": [
+                {"id": model_id, "object": "model", "owned_by": "local"}
+                for model_id in _available_models()
+            ],
+        },
+    )
 
 
 @app.options("/")
 @app.options("/rerank")
 @app.options("/v1/rerank")
+@app.options("/v1/models")
 async def options() -> Response:
     return Response(status_code=204, headers=CORS_HEADERS)
 
@@ -121,17 +204,13 @@ async def rerank(request: Request) -> JSONResponse:
         return _json(400, {"error": "invalid JSON body"})
 
     try:
+        model_id = _resolve_model_id(payload.get("model"))
         query, documents, top_n = _parse_rerank(payload)
     except ValueError as exc:
         return _json(400, {"error": str(exc)})
 
-    request_model = payload.get("model")
-    response_model = (
-        request_model if isinstance(request_model, str) and request_model else MODEL_ID
-    )
-
     try:
-        results = _rerank(query, documents, top_n)
+        results = _rerank(model_id, query, documents, top_n)
     except Exception as exc:  # noqa: BLE001
         return _json(500, {"error": "rerank failed", "detail": str(exc)})
 
@@ -143,7 +222,7 @@ async def rerank(request: Request) -> JSONResponse:
     return _json(
         200,
         {
-            "model": response_model,
+            "model": model_id,
             "results": results,
             "usage": {"total_tokens": 0},
         },

@@ -10,9 +10,7 @@ ECR_REPO="${ECR_REPO:-mvp-ecs-reranker}"
 STACK_NAME="${STACK_NAME:-ecs-reranker-mvp}"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo latest)}"
 API_KEY="${API_KEY:-}"
-MODEL_S3_URI="${MODEL_S3_URI:-s3://reranker-models-646821141010/bge-reranker-v2-m3/}"
 MODEL_ID="${MODEL_ID:-BAAI/bge-reranker-v2-m3}"
-MODEL_PATH="${MODEL_PATH:-/models/bge-reranker-v2-m3}"
 DESIRED_COUNT="${DESIRED_COUNT:-1}"
 
 if [[ -z "${API_KEY}" ]]; then
@@ -45,9 +43,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     "ApiKey=${API_KEY}" \
     "ImageUri=${IMAGE_URI}" \
-    "ModelS3Uri=${MODEL_S3_URI}" \
     "ModelId=${MODEL_ID}" \
-    "ModelPath=${MODEL_PATH}" \
     "DesiredCount=${DESIRED_COUNT}" \
   --no-fail-on-empty-changeset
 

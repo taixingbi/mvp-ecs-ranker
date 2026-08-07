@@ -78,9 +78,7 @@ jobs:
             --parameter-overrides \
               "ApiKey=${API_KEY}" \
               "ImageUri=${IMAGE_URI}" \
-              "ModelS3Uri=s3://reranker-models-646821141010/bge-reranker-v2-m3/" \
               "ModelId=BAAI/bge-reranker-v2-m3" \
-              "ModelPath=/models/bge-reranker-v2-m3" \
               "DesiredCount=1" \
             --no-fail-on-empty-changeset
 

@@ -2,22 +2,35 @@
 set -euo pipefail
 
 MODEL_ID="${MODEL_ID:-BAAI/bge-reranker-v2-m3}"
-MODEL_PATH="${MODEL_PATH:-/models/bge-reranker-v2-m3}"
-MODEL_S3_URI="${MODEL_S3_URI:-s3://reranker-models-646821141010/bge-reranker-v2-m3/}"
+MODELS_ROOT="${MODELS_ROOT:-/models}"
+MODELS_BUCKET="${MODELS_BUCKET:-s3://reranker-models-646821141010}"
 ADAPTER_PORT="${ADAPTER_PORT:-8080}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
+# Local dir names under MODELS_ROOT (must match app MODEL_CATALOG).
+MODEL_DIRS=(
+  ms-marco-MiniLM-L6-v2
+  jina-reranker-v2-base-multilingual
+  mxbai-rerank-large-v1
+  bge-reranker-v2-m3
+  jina-reranker-v3.5
+)
+
 export AWS_DEFAULT_REGION="${AWS_REGION}"
 
-echo "Syncing model from ${MODEL_S3_URI} -> ${MODEL_PATH}"
-mkdir -p "${MODEL_PATH}"
-aws s3 sync "${MODEL_S3_URI}" "${MODEL_PATH}" --only-show-errors
+mkdir -p "${MODELS_ROOT}"
+for dir in "${MODEL_DIRS[@]}"; do
+  src="${MODELS_BUCKET%/}/${dir}/"
+  dst="${MODELS_ROOT%/}/${dir}"
+  echo "Syncing ${src} -> ${dst}"
+  mkdir -p "${dst}"
+  aws s3 sync "${src}" "${dst}" --only-show-errors
+  if [[ ! -f "${dst}/config.json" ]]; then
+    echo "ERROR: config.json missing after S3 sync for ${dir}" >&2
+    exit 1
+  fi
+done
 
-if [[ ! -f "${MODEL_PATH}/config.json" ]]; then
-  echo "ERROR: config.json missing after S3 sync. Check MODEL_S3_URI=${MODEL_S3_URI}" >&2
-  exit 1
-fi
-
-echo "Starting reranker adapter on 0.0.0.0:${ADAPTER_PORT} (model=${MODEL_ID})"
-export MODEL_ID MODEL_PATH
+echo "Starting reranker adapter on 0.0.0.0:${ADAPTER_PORT} (default=${MODEL_ID})"
+export MODEL_ID MODELS_ROOT
 exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port "${ADAPTER_PORT}"
