@@ -4,6 +4,7 @@ SERVICE_URL=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='ServiceUrl'].OutputValue" \
   --output text)
 
+API_KEY=1234
 # One ECS task hosts all models; request "model" selects which CrossEncoder to run.
 # First request for a model may be slow (lazy load).
 
